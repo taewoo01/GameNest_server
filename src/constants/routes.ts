@@ -7,7 +7,8 @@ export const ROUTES = {
     LOGIN: "/login",
     USER: "/auth/me",
     UPDATE: "/update",
-    UPDATE_PW: "/change-password"
+    UPDATE_PW: "/change-password",
+    NOLOGIN_UPDATE_PW: "/update-password-no-login",
   },
   GAME: {
     BASE: "/game",
@@ -25,5 +26,34 @@ export const ROUTES = {
     ACTION_COMMU: '/:id/action',
     WRITE: "/write",
     MY_POSTS: "/my-posts",
+  },
+  COMMUNITYCOMMENT: {
+    BASE: "/communityComment",
+    LIST: "/:id/comments",
+    UPDATE: "/:id/comments/:commentId",
+  },
+  GAMECOMMENT: {
+    BASE: "/gameComment",
+    LIST: "/:id/comments",
+    UPDATE: "/:id/comments/:commentId",
+  },
+  MYCOMMENT: {
+    BASE: "/mycomment",
+    LIST: "/",
+  },
+  MYSCRAP: {
+    BASE: "/myScrap",
+    LIST: "/",
+  },
+
+  NEWS: {
+    BASE: "/steam",
+    NEWSALL: "/news/all",
+  },
+
+  CHAT: {
+    BASE: "/chat",
+    MESSAGE: "/messages",
   }
+
 };

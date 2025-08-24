@@ -10,9 +10,9 @@ import authenticateToken from "../middlewares/authenticateToken";
 
 const router = Router();
 
-// -----------------------------
-// 게임 목록 조회 (정렬 가능, 토큰 필요 없음)
-// -----------------------------
+/** ----------------------------------------
+ * 게임 목록 조회
+ ---------------------------------------- */
 router.get(ROUTES.GAME.LIST, async (req: Request, res: Response) => {
   try {
     const sort = req.query.sort as string;
@@ -35,9 +35,9 @@ router.get(ROUTES.GAME.LIST, async (req: Request, res: Response) => {
   }
 });
 
-// -----------------------------
-// 게임 찜하기 (토글, 토큰 필수)
-// -----------------------------
+/** ----------------------------------------
+ * 게임 찜
+ ---------------------------------------- */-
 router.post(ROUTES.GAME.LIKE, authenticateToken, async (req: Request, res: Response) => {
   const gameId = Number(req.params.id);
   const userId = req.user.id;
@@ -73,9 +73,9 @@ router.post(ROUTES.GAME.LIKE, authenticateToken, async (req: Request, res: Respo
   }
 });
 
-// -----------------------------
-// 별점 등록/수정 (토큰 필수)
-// -----------------------------
+/** ----------------------------------------
+ * 게임 별점 등록/수정
+ ---------------------------------------- */
 router.post(ROUTES.GAME.RATING, authenticateToken, async (req: Request, res: Response) => {
   const { id } = req.params; // game_id
   const userId = req.user.id;
@@ -105,9 +105,9 @@ router.post(ROUTES.GAME.RATING, authenticateToken, async (req: Request, res: Res
   }
 });
 
-// -----------------------------
-// 별점 조회 (토큰 선택적)
-// -----------------------------
+/** ----------------------------------------
+ * 별점 조회
+ ---------------------------------------- */
 router.get(ROUTES.GAME.RATING, async (req: Request, res: Response) => {
   const { id } = req.params;
   const { user_id } = req.query;
@@ -131,9 +131,9 @@ router.get(ROUTES.GAME.RATING, async (req: Request, res: Response) => {
   }
 });
 
-// -----------------------------
-// 게임 상세 조회 (토큰 선택적)
-// -----------------------------
+/** ----------------------------------------
+ * 게임 상세 조회
+ ---------------------------------------- */
 router.get(ROUTES.GAME.DETAIL, async (req: Request<{ id: string }, any, any, DetailQuery>, res: Response) => {
   const gameId = Number(req.params.id);
   const userId = req.user?.id ?? (req.query.user_id ? Number(req.query.user_id) : null);
@@ -176,9 +176,9 @@ router.get(ROUTES.GAME.DETAIL, async (req: Request<{ id: string }, any, any, Det
   }
 });
 
-// -----------------------------
-// 찜한 게임 목록 (토큰 필수)
-// -----------------------------
+/** ----------------------------------------
+ * 찜한 게임 목록
+ ---------------------------------------- */
 router.get(ROUTES.GAME.LIKED_LIST, authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user.id;
 
@@ -195,9 +195,9 @@ router.get(ROUTES.GAME.LIKED_LIST, authenticateToken, async (req: Request, res: 
   }
 });
 
-// -----------------------------
-// 카테고리별 게임 조회
-// -----------------------------
+/** ----------------------------------------
+ * 카테고리 게임 조회
+ ---------------------------------------- */
 router.get(ROUTES.GAME.CATEGORY, async (req: Request, res: Response) => {
   const { type, value } = req.params;
   let column: string;
@@ -206,7 +206,7 @@ router.get(ROUTES.GAME.CATEGORY, async (req: Request, res: Response) => {
     case "platform": column = "game_platforms"; break;
     case "mode": column = "game_modes"; break;
     case "tag": column = "game_tags"; break;
-    default: return res.status(400).json({ message: "잘못된 카테고리 타입입니다." });
+    default: return res.status(400).json({ message: MESSAGES.CATEGORY_NOT_FOUND });
   }
 
   try {
@@ -218,7 +218,7 @@ router.get(ROUTES.GAME.CATEGORY, async (req: Request, res: Response) => {
     res.json(rows);
   } catch (err) {
     console.error("카테고리 게임 조회 에러:", err);
-    res.status(500).json({ message: "서버 오류" });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 

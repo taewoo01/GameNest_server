@@ -2,11 +2,15 @@
 import { Router, Request, Response } from "express";
 import authenticateToken from "../middlewares/authenticateToken";
 import pool from "../db/pool";
+import { ROUTES } from "../constants/routes";
+import { MESSAGES } from "../constants/messages";
 
 const router = Router();
 
-// ---------------- 내가 쓴 댓글 전체 조회 ----------------
-router.get("/", authenticateToken, async (req: Request, res: Response) => {
+/** ----------------------------------------
+ * 내가 쓴 댓글 조회
+ ---------------------------------------- */
+router.get(ROUTES.MYCOMMENT.LIST, authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user.id;
 
   try {
@@ -37,7 +41,7 @@ router.get("/", authenticateToken, async (req: Request, res: Response) => {
     res.json(allComments);
   } catch (err) {
     console.error("내 댓글 조회 오류:", err);
-    res.status(500).json({ message: "내 댓글 조회 실패" });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 

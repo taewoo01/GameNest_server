@@ -11,8 +11,10 @@ function stripHtmlTags(input: string) {
   return input.replace(/<\/?[^>]+(>|$)/g, "");
 }
 
-/* ---------------- 내가 쓴 게시글 조회 (로그인 필요) ---------------- */
-router.get("/my-posts", authenticateToken, async (req: Request, res: Response) => {
+/** ----------------------------------------
+ * 내가 쓴 게시글 조회 ( 로그인 필요 )
+ ---------------------------------------- */
+router.get(ROUTES.COMMUNITY.MY_POSTS, authenticateToken, async (req: Request, res: Response) => {
   const userId = req.user.id;
   try {
     const [posts] = await pool.execute<RowDataPacket[]>(
@@ -31,7 +33,9 @@ router.get("/my-posts", authenticateToken, async (req: Request, res: Response) =
   }
 });
 
-/* ---------------- 게시글 목록 조회 ---------------- */
+/** ----------------------------------------
+ * 게시글 목록 조회
+ ---------------------------------------- */
 router.get(ROUTES.COMMUNITY.LIST, async (req: Request, res: Response) => {
   try {
     const { category = "", search = "" } = req.query;
@@ -68,11 +72,13 @@ router.get(ROUTES.COMMUNITY.LIST, async (req: Request, res: Response) => {
     res.json(rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: MESSAGES.POST_FETCH_FAIL });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 
-/* ---------------- 게시글 작성 ---------------- */
+/** ----------------------------------------
+ * 게시글 작성
+ ---------------------------------------- */
 router.post(ROUTES.COMMUNITY.WRITE, authenticateToken, async (req: Request, res: Response) => {
   try {
     const { title, content, category } = req.body;
@@ -99,11 +105,13 @@ router.post(ROUTES.COMMUNITY.WRITE, authenticateToken, async (req: Request, res:
     res.status(201).json({ message: MESSAGES.POST_CREATE_SUCCESS });
   } catch (err: any) {
     console.error("글 작성 오류:", err);
-    res.status(500).json({ message: MESSAGES.POST_CREATE_FAIL, error: err.message });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR, error: err.message });
   }
 });
 
-/* ---------------- 게시글 상세 조회 (로그인 없어도 가능) ---------------- */
+/** ----------------------------------------
+ * 게시글 상세 조회
+ ---------------------------------------- */
 router.get(ROUTES.COMMUNITY.DETAIL_COMMU, async (req: Request, res: Response) => {
   const postId = Number(req.params.id);
   const token = req.headers.authorization?.split(" ")[1];
@@ -163,11 +171,13 @@ router.get(ROUTES.COMMUNITY.DETAIL_COMMU, async (req: Request, res: Response) =>
     res.json({ ...post, likeCount, liked, scrapped });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: MESSAGES.POST_FETCH_FAIL });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 
-/* ---------------- 좋아요 / 스크랩 토글 (로그인 필요) ---------------- */
+/** ----------------------------------------
+ * 좋아요, 스크랩 토글 ( 로그인 필요 )
+ ---------------------------------------- */
 router.post(ROUTES.COMMUNITY.ACTION_COMMU, authenticateToken, async (req: Request, res: Response) => {
   const postId = Number(req.params.id);
   if (isNaN(postId)) return res.status(400).json({ message: "유효하지 않은 게시글 ID입니다." });
@@ -231,7 +241,7 @@ router.post(ROUTES.COMMUNITY.ACTION_COMMU, authenticateToken, async (req: Reques
     res.json({ ...post, likeCount, liked, scrapped });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: MESSAGES.ACTION_FAIL });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 

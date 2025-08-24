@@ -33,7 +33,7 @@ router.post(ROUTES.AUTH.REGISTER, async (req: Request, res: Response) => {
     res.status(201).json({ message: MESSAGES.REGISTER_SUCCESS });
   } catch (err) {
     console.error("❌ 회원가입 에러:", err);
-    res.status(500).json({ message: MESSAGES.REGISTER_FAIL });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 
@@ -207,11 +207,11 @@ router.put(ROUTES.AUTH.UPDATE_PW, authenticateToken, async (req, res) => {
 /** ----------------------------------------
  * 비밀번호 변경 (로그인 필요없음 )
  ---------------------------------------- */
-router.put("/update-password-no-login", async (req, res) => {
+router.put(ROUTES.AUTH.NOLOGIN_UPDATE_PW, async (req, res) => {
   const { userId, newPassword } = req.body;
 
   if (!userId || !newPassword) {
-    return res.status(400).json({ message: "userId와 newPassword를 모두 입력해주세요." });
+    return res.status(400).json({ message: MESSAGES.FIND_PW_FIELDS });
   }
 
   try {
@@ -222,10 +222,10 @@ router.put("/update-password-no-login", async (req, res) => {
       [hashedPassword, userId]
     );
 
-    res.status(200).json({ message: "비밀번호가 성공적으로 변경되었습니다." });
+    res.status(200).json({ message: MESSAGES.UPDATE_PW_SUCESS });
   } catch (err) {
     console.error("❌ 비밀번호 변경 실패:", err);
-    res.status(500).json({ message: "서버 오류" });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 

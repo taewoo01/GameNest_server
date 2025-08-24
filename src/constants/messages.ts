@@ -9,7 +9,6 @@ export const MESSAGES = {
 
   // 회원가입
   REGISTER_SUCCESS: "회원가입 성공",
-  REGISTER_FAIL: "DB 오류 또는 중복 계정",
 
   // 로그인
   LOGIN_SUCCESS: "로그인 성공",
@@ -26,6 +25,7 @@ export const MESSAGES = {
   // 게임
   GAME_LIST_FETCH_FAIL: "게임 목록을 불러오는 데 실패했습니다.",
   GAME_NOT_FOUND: "게임을 찾을 수 없습니다.",
+  CATEGORY_NOT_FOUND: "잘못된 카테고리 타입입니다.",
 
   // 게임 관련
   GAME_LIKE_ADDED: "찜 추가됨",
@@ -59,15 +59,18 @@ export const MESSAGES = {
 
   // 게시글 조회
   POST_NOT_FOUND: "게시글을 찾을 수 없습니다.",
-  POST_FETCH_FAIL: "게시글 조회 실패",
 
   // 글쓰기
   POST_CREATE_SUCCESS: "글 작성 완료",
-  POST_CREATE_FAIL: "글 작성 실패",
   INVALID_CATEGORY: "유효하지 않은 카테고리입니다.",
   LOGIN_REQUIRED: "로그인이 필요합니다.",
 
-  // 좋아요 / 스크랩
-  ACTION_FAIL: "액션 처리 실패",
 
+  // 댓글
+  COMMENT_NOT_FOUND: "댓글 조회 실패",
+  COMMENT_FIELDS: "댓글 내용을 입력하세요.",
+  USER_ONLY_UPDATE: "본인 댓글만 수정 가능합니다.",
+  COMMENT_UPDATE_SUCESS: "댓글 수정 완료",
+  USER_ONIY_DELETE: "본인 댓글만 삭제 가능합니다.",
+  COMMENT_DELETE_SUCESS: "댓글 삭제 완료",
 };
