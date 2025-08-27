@@ -13,5 +13,5 @@
   "ts-node": {
     "esm": false                      // esm → false (CommonJS 쓰니까)
   },
-  "include": ["src", "types"]
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts"]
 }
