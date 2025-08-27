@@ -1,21 +1,48 @@
 // src/routes/myComment.route.ts
-import { Router, Request, Response } from "express";
+import { Router, Response } from "express";
 import authenticateToken from "../middlewares/authenticateToken";
 import pool from "../db/pool";
 import { ROUTES } from "../constants/routes";
 import { MESSAGES } from "../constants/messages";
+import { AuthenticatedRequest } from "../AuthenticatedRequest";
 
 const router = Router();
+
+type GameCommentRow = {
+  id: number;
+  postId: number;
+  postTitle: string;
+  content: string;
+  createdAt: string;
+};
+
+type CommunityCommentRow = {
+  id: number;
+  postId: number;
+  postTitle: string;
+  content: string;
+  createdAt: string;
+};
+
+// 댓글 타입
+interface MyComment {
+  id: number;
+  postId: number;
+  postTitle: string;
+  content: string;
+  createdAt: string;
+  postType: 'community' | 'game';
+}
 
 /** ----------------------------------------
  * 내가 쓴 댓글 조회
  ---------------------------------------- */
-router.get(ROUTES.MYCOMMENT.LIST, authenticateToken, async (req: Request, res: Response) => {
-  const userId = req.user.id;
+router.get(ROUTES.MYCOMMENT.LIST, authenticateToken, async (req, res: Response) => {
+  const userId = (req as AuthenticatedRequest).user!.id;
 
   try {
     // ✅ 게임 댓글
-    const [gameComments]: any = await pool.query(
+    const [gameComments] = await pool.query<any[]>(
       `SELECT gc.id, gc.game_id AS postId, g.game_title AS postTitle, gc.content, gc.created_at AS createdAt
        FROM game_comments gc
        JOIN games g ON gc.game_id = g.id
@@ -24,7 +51,7 @@ router.get(ROUTES.MYCOMMENT.LIST, authenticateToken, async (req: Request, res: R
     );
 
     // ✅ 커뮤니티 댓글
-    const [communityComments]: any = await pool.query(
+    const [communityComments] = await pool.query<any[]>(
       `SELECT cc.id, cc.post_id AS postId, c.title AS postTitle, cc.content, cc.created_at AS createdAt
        FROM community_comments cc
        JOIN community_posts c ON cc.post_id = c.id
@@ -33,9 +60,23 @@ router.get(ROUTES.MYCOMMENT.LIST, authenticateToken, async (req: Request, res: R
     );
 
     // ✅ 두 댓글 합치고 최신순 정렬
-    const allComments = [
-      ...communityComments.map(c => ({ ...c, postType: 'community' })),
-      ...gameComments.map(c => ({ ...c, postType: 'game' }))
+    const allComments: MyComment[] = [
+      ...communityComments.map(({ id, postId, postTitle, content, createdAt }) => ({
+        id,
+        postId,
+        postTitle,
+        content,
+        createdAt,
+        postType: 'community' as const
+      })),
+      ...gameComments.map(({ id, postId, postTitle, content, createdAt }) => ({
+        id,
+        postId,
+        postTitle,
+        content,
+        createdAt,
+        postType: 'game' as const
+      }))
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     res.json(allComments);

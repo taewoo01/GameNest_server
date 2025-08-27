@@ -8,6 +8,7 @@ import { MESSAGES } from "../constants/messages";
 import { ROUTES } from "../constants/routes";
 import { User } from "../types/auth.types";
 import { RowDataPacket } from "mysql2";
+import { AuthenticatedRequest } from "../AuthenticatedRequest";
 
 const router = express.Router();
 
@@ -171,9 +172,9 @@ router.patch(ROUTES.AUTH.UPDATE, async (req: Request, res: Response) => {
 /** ----------------------------------------
  * 비밀번호 변경
  ---------------------------------------- */
-router.put(ROUTES.AUTH.UPDATE_PW, authenticateToken, async (req, res) => {
+ router.put(ROUTES.AUTH.UPDATE_PW, authenticateToken, async (req, res: Response) => {
   const { oldPassword, newPassword } = req.body;
-  const userId = req.user?.id;
+  const userId = (req as AuthenticatedRequest).user!.id;
 
   if (!userId) return res.status(401).json({ message: MESSAGES.UNAUTHORIZED });
   if (!oldPassword || !newPassword)

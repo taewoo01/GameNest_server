@@ -1,12 +1,12 @@
 // src/routes/game.ts
 import { Router, Request, Response } from "express";
 import pool from "../db/pool";
-import { DetailQuery } from "../types/auth.types";
-import { Game } from "../types/game.types";
 import { RowDataPacket } from "mysql2";
 import { ROUTES } from "../constants/routes";
 import { MESSAGES } from "../constants/messages";
 import authenticateToken from "../middlewares/authenticateToken";
+import { AuthenticatedRequest } from "../AuthenticatedRequest";
+import { Game } from "../types/game.types";
 
 const router = Router();
 
@@ -37,10 +37,10 @@ router.get(ROUTES.GAME.LIST, async (req: Request, res: Response) => {
 
 /** ----------------------------------------
  * 게임 찜
- ---------------------------------------- */-
+ ---------------------------------------- */
 router.post(ROUTES.GAME.LIKE, authenticateToken, async (req: Request, res: Response) => {
   const gameId = Number(req.params.id);
-  const userId = req.user.id;
+  const userId = (req as AuthenticatedRequest).user!.id;
 
   try {
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -51,7 +51,6 @@ router.post(ROUTES.GAME.LIKE, authenticateToken, async (req: Request, res: Respo
     let liked = false;
     if (rows.length > 0) {
       await pool.execute("DELETE FROM likes WHERE user_id = ? AND game_id = ?", [userId, gameId]);
-      liked = false;
     } else {
       await pool.execute("INSERT INTO likes (user_id, game_id, created_at) VALUES (?, ?, NOW())", [userId, gameId]);
       liked = true;
@@ -77,14 +76,17 @@ router.post(ROUTES.GAME.LIKE, authenticateToken, async (req: Request, res: Respo
  * 게임 별점 등록/수정
  ---------------------------------------- */
 router.post(ROUTES.GAME.RATING, authenticateToken, async (req: Request, res: Response) => {
-  const { id } = req.params; // game_id
-  const userId = req.user.id;
+  const { id } = req.params;
+  const userId = (req as AuthenticatedRequest).user!.id;
   const { rating } = req.body;
 
   if (rating == null) return res.status(400).json({ message: MESSAGES.INVALID_INPUT });
 
   try {
-    const [rows] = await pool.execute("SELECT 1 FROM ratings WHERE user_id = ? AND game_id = ?", [userId, id]);
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      "SELECT 1 FROM ratings WHERE user_id = ? AND game_id = ?",
+      [userId, id]
+    );
 
     if (rows.length > 0) {
       await pool.execute(
@@ -113,11 +115,17 @@ router.get(ROUTES.GAME.RATING, async (req: Request, res: Response) => {
   const { user_id } = req.query;
 
   try {
-    const [avgRows] = await pool.execute("SELECT ROUND(AVG(rating), 1) AS avg_rating FROM ratings WHERE game_id = ?", [id]);
+    const [avgRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT ROUND(AVG(rating), 1) AS avg_rating FROM ratings WHERE game_id = ?",
+      [id]
+    );
 
     let userRating = null;
     if (user_id) {
-      const [userRows] = await pool.execute("SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?", [user_id, id]);
+      const [userRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?",
+        [user_id, id]
+      );
       if (userRows.length > 0) userRating = userRows[0].rating;
     }
 
@@ -134,12 +142,11 @@ router.get(ROUTES.GAME.RATING, async (req: Request, res: Response) => {
 /** ----------------------------------------
  * 게임 상세 조회
  ---------------------------------------- */
-router.get(ROUTES.GAME.DETAIL, async (req: Request<{ id: string }, any, any, DetailQuery>, res: Response) => {
+router.get(ROUTES.GAME.DETAIL, authenticateToken, async (req: Request, res: Response) => {
   const gameId = Number(req.params.id);
-  const userId = req.user?.id ?? (req.query.user_id ? Number(req.query.user_id) : null);
+  const userId = (req as AuthenticatedRequest).user!.id;
 
   if (isNaN(gameId)) return res.status(400).json({ message: MESSAGES.INVALID_GAME_ID });
-  if (userId !== null && isNaN(userId)) return res.status(400).json({ message: MESSAGES.INVALID_USER_ID });
 
   try {
     const [gameRows] = await pool.execute<RowDataPacket[]>("SELECT * FROM games WHERE id = ?", [gameId]);
@@ -149,18 +156,30 @@ router.get(ROUTES.GAME.DETAIL, async (req: Request<{ id: string }, any, any, Det
     let isLiked = false;
     let myRating = null;
 
-    if (userId !== null) {
-      const [likeRows] = await pool.execute<RowDataPacket[]>("SELECT * FROM likes WHERE user_id = ? AND game_id = ?", [userId, gameId]);
+    if (userId) {
+      const [likeRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT * FROM likes WHERE user_id = ? AND game_id = ?",
+        [userId, gameId]
+      );
       isLiked = likeRows.length > 0;
 
-      const [myRatingRows] = await pool.execute<RowDataPacket[]>("SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?", [userId, gameId]);
+      const [myRatingRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?",
+        [userId, gameId]
+      );
       myRating = myRatingRows[0]?.rating ?? null;
     }
 
-    const [likeCountRows] = await pool.execute<RowDataPacket[]>("SELECT COUNT(*) AS likeCount FROM likes WHERE game_id = ?", [gameId]);
+    const [likeCountRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT COUNT(*) AS likeCount FROM likes WHERE game_id = ?",
+      [gameId]
+    );
     const likeCount: number = likeCountRows[0]?.likeCount ?? 0;
 
-    const [avgRatingRows] = await pool.execute<RowDataPacket[]>("SELECT AVG(rating) as average FROM ratings WHERE game_id = ?", [gameId]);
+    const [avgRatingRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT AVG(rating) as average FROM ratings WHERE game_id = ?",
+      [gameId]
+    );
     const averageRating: number = Number(avgRatingRows[0]?.average ?? 0);
 
     res.json({
@@ -180,7 +199,7 @@ router.get(ROUTES.GAME.DETAIL, async (req: Request<{ id: string }, any, any, Det
  * 찜한 게임 목록
  ---------------------------------------- */
 router.get(ROUTES.GAME.LIKED_LIST, authenticateToken, async (req: Request, res: Response) => {
-  const userId = req.user.id;
+  const userId = (req as AuthenticatedRequest).user!.id;
 
   try {
     const [games] = await pool.execute<RowDataPacket[]>(
