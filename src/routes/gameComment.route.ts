@@ -3,6 +3,7 @@ import pool from "../db/pool";
 import authenticateToken from "../middlewares/authenticateToken";
 import { MESSAGES } from "../constants/messages";
 import { ROUTES } from "../constants/routes";
+import { AuthenticatedRequest } from "../AuthenticatedRequest";
 
 const router = Router();
 
@@ -62,9 +63,9 @@ router.get(ROUTES.GAMECOMMENT.LIST, async (req: Request, res: Response) => {
 /** ----------------------------------------
  * 게임 댓글 작성
  ---------------------------------------- */
-router.post(ROUTES.GAMECOMMENT.LIST, authenticateToken, async (req: Request, res: Response) => {
+router.post(ROUTES.GAMECOMMENT.LIST, authenticateToken, async (req, res: Response) => {
   const gameId = Number(req.params.id);
-  const userId = req.user?.id;
+  const userId = (req as AuthenticatedRequest).user!.id;
   const { content, parent_id } = req.body;
 
   if (!userId) return res.status(401).json({ message: MESSAGES.UNAUTHORIZED });
@@ -97,9 +98,9 @@ router.post(ROUTES.GAMECOMMENT.LIST, authenticateToken, async (req: Request, res
 /** ----------------------------------------
  * 게임 댓글 수정
  ---------------------------------------- */
-router.put(ROUTES.GAMECOMMENT.UPDATE, authenticateToken, async (req: Request, res: Response) => {
+router.put(ROUTES.GAMECOMMENT.UPDATE, authenticateToken, async (req, res: Response) => {
   const commentId = Number(req.params.commentId);
-  const userId = req.user?.id;
+  const userId = (req as AuthenticatedRequest).user!.id;
   const { content } = req.body;
 
   if (!userId) return res.status(401).json({ message: MESSAGES.UNAUTHORIZED });
@@ -121,9 +122,9 @@ router.put(ROUTES.GAMECOMMENT.UPDATE, authenticateToken, async (req: Request, re
 /** ----------------------------------------
  * 게임 댓글 삭제
  ---------------------------------------- */
-router.delete(ROUTES.GAMECOMMENT.UPDATE, authenticateToken, async (req: Request, res: Response) => {
+router.delete(ROUTES.GAMECOMMENT.UPDATE, authenticateToken, async (req, res: Response) => {
   const commentId = Number(req.params.commentId);
-  const userId = req.user?.id;
+  const userId = (req as AuthenticatedRequest).user!.id;
 
   if (!userId) return res.status(401).json({ message: MESSAGES.UNAUTHORIZED });
 
