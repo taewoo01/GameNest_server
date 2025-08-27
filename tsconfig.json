@@ -1,17 +1,13 @@
 {
   "compilerOptions": {
-    "target": "ES2020",               // ESNext → ES2020 (백엔드에서는 안정적인 표준)
-    "module": "CommonJS",             // ESNext → CommonJS (Node.js 서버에서 일반적으로 사용)
+    "target": "ES2020",
+    "module": "CommonJS",
     "outDir": "dist",
-    "rootDir": "src",                 // 📌 빌드 시 기준 경로 지정
-    "moduleResolution": "node",       // 📌 모듈 해석 방식 명시
+    "rootDir": ".",
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true                    // 엄격 모드 추천 (선택)
+    "strict": true,
+    "skipLibCheck": true
   },
-  "ts-node": {
-    "esm": false                      // esm → false (CommonJS 쓰니까)
-  },
-  "include": ["src", "types"]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
