@@ -4,6 +4,7 @@ import pool from "../db/pool";
 import authenticateToken from "../middlewares/authenticateToken";
 import { ROUTES } from "../constants/routes";
 import { MESSAGES } from "../constants/messages";
+import { AuthenticatedRequest } from "../AuthenticatedRequest";
 
 const router = Router();
 
@@ -11,7 +12,7 @@ const router = Router();
  * 내가 스크랩한 목록 조회
  ---------------------------------------- */
 router.get(ROUTES.MYSCRAP.LIST, authenticateToken, async (req: Request, res: Response) => {
-  const userId = req.user.id; // authenticateToken에서 user 세팅
+  const userId = (req as AuthenticatedRequest).user!.id;
   try {
     const [rows]: any[] = await pool.query(
       `
