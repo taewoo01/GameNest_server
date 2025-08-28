@@ -14,7 +14,14 @@ const router = Router();
 router.get(ROUTES.MYSCRAP.LIST, authenticateToken, async (req: Request, res: Response) => {
   const userId = (req as AuthenticatedRequest).user!.id;
   try {
-    const [rows]: any[] = await pool.query(
+    const result = await pool.query<{
+      id: number;
+      title: string;
+      category: string;
+      views: number;
+      created_at: string;
+      likecount: number;
+    }>(
       `
       SELECT 
         c.id,
@@ -22,16 +29,16 @@ router.get(ROUTES.MYSCRAP.LIST, authenticateToken, async (req: Request, res: Res
         c.category,
         c.views,
         c.created_at,
-        (SELECT COUNT(*) FROM community_likes WHERE post_id = c.id) AS likeCount
+        (SELECT COUNT(*) FROM community_likes WHERE post_id = c.id) AS likecount
       FROM community_posts c
       JOIN community_scraps s ON s.post_id = c.id
-      WHERE s.user_id = ?
+      WHERE s.user_id = $1
       ORDER BY c.created_at DESC
       `,
       [userId]
     );
 
-    res.json(rows);
+    res.json(result.rows);
   } catch (err) {
     console.error("내 스크랩 게시글 조회 오류:", err);
     res.status(500).json({ message: MESSAGES.SERVER_ERROR });

@@ -1,3 +1,4 @@
+// src/routes/chat.route.ts
 import { Router } from "express";
 import pool from "../db/pool";
 import { MESSAGES } from "../constants/messages";
@@ -10,16 +11,23 @@ const router = Router();
  ---------------------------------------- */
 router.get(ROUTES.CHAT.MESSAGE, async (req, res) => {
   try {
-    const [rows] = await pool.query(
+    const result = await pool.query<{
+      id: number;
+      user_id: number;
+      user: string;
+      text: string;
+      date: string;
+    }>(
       `SELECT cm.id, cm.user_id, u.user_nickname AS user, cm.text, cm.date
        FROM chat_messages cm
        JOIN users u ON cm.user_id = u.id
        ORDER BY cm.date ASC`
     );
-    res.json(rows);
+
+    res.json(result.rows);
   } catch (error) {
     console.error("DB 에러:", error);
-    res.status(500).json({ message: MESSAGES.SERVER_ERROR});
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
 });
 

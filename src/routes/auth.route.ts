@@ -1,3 +1,4 @@
+// src/routes/auth.ts
 import express, { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import pool from "../db/pool";
@@ -7,7 +8,6 @@ import { HASHED_NUMBER } from "../constants";
 import { MESSAGES } from "../constants/messages";
 import { ROUTES } from "../constants/routes";
 import { User } from "../types/auth.types";
-import { RowDataPacket } from "mysql2";
 import { AuthenticatedRequest } from "../AuthenticatedRequest";
 
 const router = express.Router();
@@ -25,9 +25,9 @@ router.post(ROUTES.AUTH.REGISTER, async (req: Request, res: Response) => {
   try {
     const hashedPassword = await bcrypt.hash(user_password, HASHED_NUMBER);
 
-    await pool.execute(
+    await pool.query(
       `INSERT INTO users (user_login_id, user_password, user_nickname, user_email, user_created_at, user_updated_at)
-       VALUES (?, ?, ?, ?, NOW(), NOW())`,
+       VALUES ($1, $2, $3, $4, NOW(), NOW())`,
       [user_login_id, hashedPassword, user_nickname, user_email]
     );
 
@@ -49,16 +49,18 @@ router.post(ROUTES.AUTH.LOGIN, async (req: Request, res: Response) => {
   }
 
   try {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      "SELECT * FROM users WHERE user_login_id = ?",
+    const result = await pool.query<User>(
+      "SELECT * FROM users WHERE user_login_id = $1",
       [user_login_id]
     );
+
+    const rows = result.rows;
 
     if (rows.length === 0) {
       return res.status(401).json({ message: MESSAGES.USER_NOT_FOUND });
     }
 
-    const user = rows[0] as User;
+    const user = rows[0];
     const isMatch = await bcrypt.compare(user_password, user.user_password);
     if (!isMatch) return res.status(401).json({ message: MESSAGES.WRONG_PASSWORD });
 
@@ -90,14 +92,14 @@ router.post(ROUTES.AUTH.FIND_ID, async (req: Request, res: Response) => {
   }
 
   try {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      "SELECT user_login_id FROM users WHERE user_email = ? AND user_nickname = ?",
+    const result = await pool.query<{ user_login_id: string }>(
+      "SELECT user_login_id FROM users WHERE user_email = $1 AND user_nickname = $2",
       [user_email, user_nickname]
     );
 
-    if (rows.length === 0) return res.status(404).json({ message: MESSAGES.USER_NOT_FOUND });
+    if (result.rows.length === 0) return res.status(404).json({ message: MESSAGES.USER_NOT_FOUND });
 
-    res.status(200).json({ user_login_id: rows[0].user_login_id });
+    res.status(200).json({ user_login_id: result.rows[0].user_login_id });
   } catch (err) {
     console.error("❌ 아이디 찾기 에러:", err);
     res.status(500).json({ message: MESSAGES.SERVER_ERROR });
@@ -107,16 +109,16 @@ router.post(ROUTES.AUTH.FIND_ID, async (req: Request, res: Response) => {
 /** ----------------------------------------
  * 비밀번호 찾기
  ---------------------------------------- */
- async function findUserByIdAndEmail(user_login_id: string, user_email: string) {
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    "SELECT * FROM users WHERE user_login_id = ? AND user_email = ?",
+async function findUserByIdAndEmail(user_login_id: string, user_email: string) {
+  const result = await pool.query<User>(
+    "SELECT * FROM users WHERE user_login_id = $1 AND user_email = $2",
     [user_login_id, user_email]
   );
-  return rows.length ? rows[0] : null;
+  return result.rows.length ? result.rows[0] : null;
 }
 
 router.post(ROUTES.AUTH.FIND_PW, async (req: Request, res: Response) => {
-  const { user_login_id, user_email } = req.body; // user_email로 수정
+  const { user_login_id, user_email } = req.body;
 
   if (!user_login_id || !user_email) {
     return res.status(400).json({ message: MESSAGES.FIND_PW_FIELDS });
@@ -150,15 +152,15 @@ router.patch(ROUTES.AUTH.UPDATE, async (req: Request, res: Response) => {
       return res.status(400).json({ message: MESSAGES.REQUIRED_UPDATE_FIELDS });
     }
 
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      "SELECT * FROM users WHERE id = ? AND user_nickname = ? AND user_email = ?",
+    const result = await pool.query<User>(
+      "SELECT * FROM users WHERE id = $1 AND user_nickname = $2 AND user_email = $3",
       [userId, currentNickname, currentEmail]
     );
 
-    if (rows.length === 0) return res.status(400).json({ message: MESSAGES.UPDATE_FAIL });
+    if (result.rows.length === 0) return res.status(400).json({ message: MESSAGES.UPDATE_FAIL });
 
-    await pool.execute(
-      "UPDATE users SET user_nickname = ?, user_email = ?, user_updated_at = NOW() WHERE id = ?",
+    await pool.query(
+      "UPDATE users SET user_nickname = $1, user_email = $2, user_updated_at = NOW() WHERE id = $3",
       [newNickname || currentNickname, newEmail || currentEmail, userId]
     );
 
@@ -172,29 +174,28 @@ router.patch(ROUTES.AUTH.UPDATE, async (req: Request, res: Response) => {
 /** ----------------------------------------
  * 비밀번호 변경
  ---------------------------------------- */
- router.put(ROUTES.AUTH.UPDATE_PW, authenticateToken, async (req, res: Response) => {
+router.put(ROUTES.AUTH.UPDATE_PW, authenticateToken, async (req, res: Response) => {
   const { oldPassword, newPassword } = req.body;
   const userId = (req as AuthenticatedRequest).user!.id;
 
   if (!userId) return res.status(401).json({ message: MESSAGES.UNAUTHORIZED });
-  if (!oldPassword || !newPassword)
-    return res.status(400).json({ message: MESSAGES.UPDATE_PW_FIELDS });
+  if (!oldPassword || !newPassword) return res.status(400).json({ message: MESSAGES.UPDATE_PW_FIELDS });
 
   try {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      "SELECT user_password FROM users WHERE id = ?",
+    const result = await pool.query<{ user_password: string }>(
+      "SELECT user_password FROM users WHERE id = $1",
       [userId]
     );
 
-    if (rows.length === 0) return res.status(404).json({ message: MESSAGES.USER_NOT_FOUND });
+    if (result.rows.length === 0) return res.status(404).json({ message: MESSAGES.USER_NOT_FOUND });
 
-    const isMatch = await bcrypt.compare(oldPassword, (rows[0] as any).user_password);
+    const isMatch = await bcrypt.compare(oldPassword, result.rows[0].user_password);
     if (!isMatch) return res.status(400).json({ message: MESSAGES.UPDATE_PW_FAIL });
 
     const hashedPassword = await bcrypt.hash(newPassword, HASHED_NUMBER);
 
-    await pool.execute(
-      "UPDATE users SET user_password = ?, user_updated_at = NOW() WHERE id = ?",
+    await pool.query(
+      "UPDATE users SET user_password = $1, user_updated_at = NOW() WHERE id = $2",
       [hashedPassword, userId]
     );
 
@@ -206,7 +207,7 @@ router.patch(ROUTES.AUTH.UPDATE, async (req: Request, res: Response) => {
 });
 
 /** ----------------------------------------
- * 비밀번호 변경 (로그인 필요없음 )
+ * 비밀번호 변경 (로그인 필요없음)
  ---------------------------------------- */
 router.put(ROUTES.AUTH.NOLOGIN_UPDATE_PW, async (req, res) => {
   const { userId, newPassword } = req.body;
@@ -218,8 +219,8 @@ router.put(ROUTES.AUTH.NOLOGIN_UPDATE_PW, async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(newPassword, HASHED_NUMBER);
 
-    const [result] = await pool.execute(
-      "UPDATE users SET user_password = ?, user_updated_at = NOW() WHERE id = ?",
+    await pool.query(
+      "UPDATE users SET user_password = $1, user_updated_at = NOW() WHERE id = $2",
       [hashedPassword, userId]
     );
 
