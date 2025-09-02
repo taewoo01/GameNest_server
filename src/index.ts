@@ -23,13 +23,7 @@ const allowedOrigins: string[] = [
 // ✅ Socket.IO 서버 생성
 const io = new Server(httpServer, {
   cors: {
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // Postman, curl 같은 요청 허용
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("❌ Not allowed by CORS (Socket.IO)"));
-    },
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
     credentials: true,
   },
