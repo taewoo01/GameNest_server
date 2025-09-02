@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import authRoutes from "./routes/auth.route";
 import gamesRoutes from "./routes/game.route";
 import communityRoutes from "./routes/community.routs";
@@ -12,25 +11,7 @@ import Chat from "./routes/chat.route";
 
 const app = express();
 
-// 허용할 프론트 URL (Vercel)
-const allowedOrigins = [process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app"];
-
-app.use(cors({
-  origin: function (origin, callback) {
-    // origin이 없는 경우 (Postman, curl 등) 허용
-    if (!origin) return callback(null, true);
-
-    // 허용된 origin이면 허용
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    }
-
-    // 허용되지 않으면 에러
-    callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true, // 쿠키/세션 포함 요청 허용
-}));
-
+// ✅ Express에서는 CORS 제거 (nginx에서 처리)
 app.use(express.json());
 
 // 라우터 연결
