@@ -16,7 +16,7 @@ const httpServer = createServer(app);
 // Socket.IO 서버 생성
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || "*", // 클라이언트 URL 환경변수로 관리
+    origin: process.env.CLIENT_URL, // 클라이언트 URL 환경변수로 관리
     methods: ["GET", "POST"],
   },
 });
