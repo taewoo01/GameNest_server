@@ -12,29 +12,28 @@ import Chat from "./routes/chat.route";
 
 const app = express();
 
-import cors from "cors";
-
+// ✅ 허용할 프론트엔드 도메인
 const allowedOrigins = [process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app"];
 
+// 🔹 CORS 설정
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // Postman, curl 등 origin 없는 요청 허용
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error("Not allowed by CORS"));
   },
-  credentials: true,
+  credentials: true, // withCredentials 허용
 }));
 
-// 모든 preflight 요청 허용
+// 🔹 모든 OPTIONS(preflight) 요청 허용
 app.options("*", cors({
   origin: allowedOrigins,
   credentials: true,
 }));
 
-
 app.use(express.json());
 
-// 라우터 연결
+// ✅ 라우터 연결
 app.use("/auth", authRoutes);
 app.use("/game", gamesRoutes);
 app.use("/community", communityRoutes);
@@ -45,6 +44,19 @@ app.use("/myScrap", myScrap);
 app.use("/steam", News);
 app.use("/chat", Chat);
 
+// 기본 라우터
 app.get("/", (req, res) => res.send("✅ 서버 작동 중"));
+
+// 🔹 404 처리
+app.use((req, res) => res.status(404).json({ message: "Not Found" }));
+
+// 🔹 글로벌 에러 처리
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("⚠️ 글로벌 에러:", err.message || err);
+  res.status(500).json({
+    message: "서버 오류",
+    error: err.message || err
+  });
+});
 
 export default app;
