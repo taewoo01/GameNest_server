@@ -12,10 +12,17 @@ import Chat from "./routes/chat.route";
 
 const app = express();
 
-// 🔑 CORS 설정
-const CLIENT_URL = process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app";
+const allowedOrigins = [process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app"];
+
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // Postman, curl 같은 경우 허용
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
 }));
 
