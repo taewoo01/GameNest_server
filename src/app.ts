@@ -12,10 +12,13 @@ import Chat from "./routes/chat.route";
 
 const app = express();
 
+// 🔑 CORS 설정
+const CLIENT_URL = process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app";
 app.use(cors({
-  origin: process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app",
+  origin: CLIENT_URL,
   credentials: true,
 }));
+
 app.use(express.json());
 
 // 라우터 연결
