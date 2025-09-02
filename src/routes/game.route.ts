@@ -24,16 +24,17 @@ router.get(ROUTES.GAME.LIST, async (req: Request, res: Response) => {
     else if (sort === "title") orderBy = "game_title ASC";
     else if (sort === "id") orderBy = "id ASC";
 
-    const result: QueryResult<Game> = await pool.query(
+    const [rows] = await pool.query(
       `SELECT id, game_title, game_thumbnail FROM games ORDER BY ${orderBy}`
     );
 
-    res.json(result.rows);
+    res.json(rows);
   } catch (err) {
     console.error("❌ 게임 목록 조회 에러:", err);
-    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
+    res.status(500).json({ message: MESSAGES.SERVER_ERROR, error: err instanceof Error ? err.message : err });
   }
 });
+
 
 /** ----------------------------------------
  * 게임 찜
