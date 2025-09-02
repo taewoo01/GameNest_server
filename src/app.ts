@@ -14,13 +14,15 @@ import Chat from "./routes/chat.route";
 const app = express();
 
 // 허용할 프론트엔드 도메인
-const allowedOrigins = [
-  process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app",
-];
+const allowedOrigins = [process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app"];
 
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // Postman, curl 허용
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true
 }));
 
 app.use(express.json());
