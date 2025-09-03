@@ -169,23 +169,26 @@ router.get(ROUTES.GAME.RATING, async (req: Request, res: Response) => {
 router.get(
   ROUTES.GAME.DETAIL,
   async (
-    req: AuthenticatedRequest<{ id: string }, any, any, DetailQuery>,
+    req: Request<{ id: string }, any, any, DetailQuery>,
     res: Response
   ) => {
-    // 게임 ID
-    const gameId = Number(req.params.id);
-    // 로그인한 사용자 ID 또는 쿼리로 넘어온 user_id
+    const authReq = req as AuthenticatedRequest<
+      { id: string },
+      any,
+      any,
+      DetailQuery
+    >; // 타입 단언
+    const gameId = Number(authReq.params.id);
     const userId =
-      req.user?.id ?? (req.query.user_id ? Number(req.query.user_id) : null);
+      authReq.user?.id ??
+      (authReq.query.user_id ? Number(authReq.query.user_id) : null);
 
-    // ID 유효성 체크
     if (isNaN(gameId))
       return res.status(400).json({ message: MESSAGES.INVALID_GAME_ID });
     if (userId !== null && isNaN(userId))
       return res.status(400).json({ message: MESSAGES.INVALID_USER_ID });
 
     try {
-      // 게임 조회
       const [gameRows] = await pool.execute<RowDataPacket[]>(
         "SELECT * FROM games WHERE id = ?",
         [gameId]
@@ -197,7 +200,6 @@ router.get(
       let isLiked = false;
       let myRating = null;
 
-      // 로그인 사용자 또는 user_id가 존재하면 찜/별점 조회
       if (userId !== null) {
         const [likeRows] = await pool.execute<RowDataPacket[]>(
           "SELECT * FROM likes WHERE user_id = ? AND game_id = ?",
@@ -212,21 +214,18 @@ router.get(
         myRating = myRatingRows[0]?.rating ?? null;
       }
 
-      // 찜 수 조회
       const [likeCountRows] = await pool.execute<RowDataPacket[]>(
         "SELECT COUNT(*) AS likeCount FROM likes WHERE game_id = ?",
         [gameId]
       );
       const likeCount: number = likeCountRows[0]?.likeCount ?? 0;
 
-      // 평균 별점 조회
       const [avgRatingRows] = await pool.execute<RowDataPacket[]>(
         "SELECT AVG(rating) as average FROM ratings WHERE game_id = ?",
         [gameId]
       );
       const averageRating: number = Number(avgRatingRows[0]?.average ?? 0);
 
-      // 결과 반환
       res.json({
         game,
         liked: isLiked,
