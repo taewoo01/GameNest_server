@@ -27,12 +27,6 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
 
-// ✅ 모든 OPTIONS 요청에 대해 CORS 응답
-app.options("*", cors({
-  origin: allowedOrigins,
-  credentials: true,
-}));
-
 // JSON 파싱
 app.use(express.json());
 
