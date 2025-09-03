@@ -13,10 +13,12 @@ import Chat from "./routes/chat.route";
 
 const app = express();
 
-// 허용할 프론트엔드 도메인
-const allowedOrigins = [process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app"];
+// 허용할 프론트 도메인
+const allowedOrigins = [
+  "https://game-nest-gilt.vercel.app",
+  "http://localhost:3000" // 로컬 테스트용
+];
 
-// ✅ CORS 설정
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // curl, Postman 허용
@@ -24,10 +26,10 @@ app.use(cors({
     callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
 
-// JSON 파싱
+// JSON 요청 처리
 app.use(express.json());
 
 // 라우터 등록
