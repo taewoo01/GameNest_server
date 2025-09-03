@@ -1,4 +1,4 @@
-// src/routes/game.ts
+// src/routes/game.route.ts
 import { Router, Request, Response } from "express";
 import pool from "../db/pool";
 import { DetailQuery } from "../types/auth.types";
@@ -7,6 +7,7 @@ import { RowDataPacket } from "mysql2";
 import { ROUTES } from "../constants/routes";
 import { MESSAGES } from "../constants/messages";
 import authenticateToken from "../middlewares/authenticateToken";
+import { AuthenticatedRequest } from "../AuthenticatedRequest";
 
 const router = Router();
 
@@ -19,9 +20,14 @@ router.get(ROUTES.GAME.LIST, async (req: Request, res: Response) => {
     let orderBy = "id ASC";
 
     if (sort === "date") orderBy = "game_created_at DESC";
-    else if (sort === "likes") orderBy = "(SELECT COUNT(*) FROM likes WHERE likes.game_id = games.id) DESC";
-    else if (sort === "rating") orderBy = "(SELECT AVG(rating) FROM ratings WHERE ratings.game_id = games.id) DESC";
-    else if (sort === "title") orderBy = "game_title COLLATE utf8mb4_0900_ai_ci ASC";
+    else if (sort === "likes")
+      orderBy =
+        "(SELECT COUNT(*) FROM likes WHERE likes.game_id = games.id) DESC";
+    else if (sort === "rating")
+      orderBy =
+        "(SELECT AVG(rating) FROM ratings WHERE ratings.game_id = games.id) DESC";
+    else if (sort === "title")
+      orderBy = "game_title COLLATE utf8mb4_0900_ai_ci ASC";
     else if (sort === "id") orderBy = "id ASC";
 
     const [rows] = await pool.execute<RowDataPacket[]>(
@@ -36,74 +42,94 @@ router.get(ROUTES.GAME.LIST, async (req: Request, res: Response) => {
 });
 
 /** ----------------------------------------
- * 게임 찜
- ---------------------------------------- */-
-router.post(ROUTES.GAME.LIKE, authenticateToken, async (req: Request, res: Response) => {
-  const gameId = Number(req.params.id);
-  const userId = req.user.id;
+ * 게임 찜 토글
+ ---------------------------------------- */
+router.post(
+  ROUTES.GAME.LIKE,
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest; // 타입 단언
+    const gameId = Number(req.params.id);
+    const userId = authReq.user.id; // 안전하게 접근 가능
 
-  try {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      "SELECT * FROM likes WHERE user_id = ? AND game_id = ?",
-      [userId, gameId]
-    );
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        "SELECT * FROM likes WHERE user_id = ? AND game_id = ?",
+        [userId, gameId]
+      );
 
-    let liked = false;
-    if (rows.length > 0) {
-      await pool.execute("DELETE FROM likes WHERE user_id = ? AND game_id = ?", [userId, gameId]);
-      liked = false;
-    } else {
-      await pool.execute("INSERT INTO likes (user_id, game_id, created_at) VALUES (?, ?, NOW())", [userId, gameId]);
-      liked = true;
+      let liked = false;
+      if (rows.length > 0) {
+        await pool.execute(
+          "DELETE FROM likes WHERE user_id = ? AND game_id = ?",
+          [userId, gameId]
+        );
+        liked = false;
+      } else {
+        await pool.execute(
+          "INSERT INTO likes (user_id, game_id, created_at) VALUES (?, ?, NOW())",
+          [userId, gameId]
+        );
+        liked = true;
+      }
+
+      const [countRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT COUNT(*) AS likeCount FROM likes WHERE game_id = ?",
+        [gameId]
+      );
+
+      res.json({
+        liked,
+        likeCount: countRows[0].likeCount || 0,
+        message: liked ? MESSAGES.GAME_LIKE_ADDED : MESSAGES.GAME_LIKE_REMOVED,
+      });
+    } catch (err) {
+      console.error("❌ 찜 토글 에러:", err);
+      res.status(500).json({ message: MESSAGES.SERVER_ERROR });
     }
-
-    const [countRows] = await pool.execute<RowDataPacket[]>(
-      "SELECT COUNT(*) AS likeCount FROM likes WHERE game_id = ?",
-      [gameId]
-    );
-
-    res.json({
-      liked,
-      likeCount: countRows[0].likeCount || 0,
-      message: liked ? MESSAGES.GAME_LIKE_ADDED : MESSAGES.GAME_LIKE_REMOVED,
-    });
-  } catch (err) {
-    console.error("❌ 찜 토글 에러:", err);
-    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
-});
+);
 
 /** ----------------------------------------
  * 게임 별점 등록/수정
  ---------------------------------------- */
-router.post(ROUTES.GAME.RATING, authenticateToken, async (req: Request, res: Response) => {
-  const { id } = req.params; // game_id
-  const userId = req.user.id;
-  const { rating } = req.body;
+router.post(
+  ROUTES.GAME.RATING,
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest; // 타입 단언
+    const { id } = req.params; // game_id
+    const userId = authReq.user.id; // 안전하게 접근 가능
+    const { rating } = req.body;
 
-  if (rating == null) return res.status(400).json({ message: MESSAGES.INVALID_INPUT });
+    if (rating == null)
+      return res.status(400).json({ message: MESSAGES.INVALID_INPUT });
 
-  try {
-    const [rows] = await pool.execute("SELECT 1 FROM ratings WHERE user_id = ? AND game_id = ?", [userId, id]);
-
-    if (rows.length > 0) {
-      await pool.execute(
-        "UPDATE ratings SET rating = ?, created_at = NOW() WHERE user_id = ? AND game_id = ?",
-        [rating, userId, id]
+    try {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        "SELECT 1 FROM ratings WHERE user_id = ? AND game_id = ?",
+        [userId, id]
       );
-    } else {
-      await pool.execute(
-        "INSERT INTO ratings (user_id, game_id, rating, created_at) VALUES (?, ?, ?, NOW())",
-        [userId, id, rating]
-      );
+
+      if (rows.length > 0) {
+        await pool.execute(
+          "UPDATE ratings SET rating = ?, created_at = NOW() WHERE user_id = ? AND game_id = ?",
+          [rating, userId, id]
+        );
+      } else {
+        await pool.execute(
+          "INSERT INTO ratings (user_id, game_id, rating, created_at) VALUES (?, ?, ?, NOW())",
+          [userId, id, rating]
+        );
+      }
+
+      res.json({ message: MESSAGES.RATING_SAVE_SUCCESS });
+    } catch (err) {
+      console.error("❌ 별점 저장 에러:", err);
+      res.status(500).json({ message: MESSAGES.SERVER_ERROR });
     }
-
-    res.json({ message: MESSAGES.RATING_SAVE_SUCCESS });
-  } catch (err) {
-    console.error("❌ 별점 저장 에러:", err);
-    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
-});
+);
 
 /** ----------------------------------------
  * 별점 조회
@@ -113,11 +139,17 @@ router.get(ROUTES.GAME.RATING, async (req: Request, res: Response) => {
   const { user_id } = req.query;
 
   try {
-    const [avgRows] = await pool.execute("SELECT ROUND(AVG(rating), 1) AS avg_rating FROM ratings WHERE game_id = ?", [id]);
+    const [avgRows] = await pool.execute<RowDataPacket[]>(
+      "SELECT ROUND(AVG(rating), 1) AS avg_rating FROM ratings WHERE game_id = ?",
+      [id]
+    );
 
     let userRating = null;
     if (user_id) {
-      const [userRows] = await pool.execute("SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?", [user_id, id]);
+      const [userRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?",
+        [user_id, id]
+      );
       if (userRows.length > 0) userRating = userRows[0].rating;
     }
 
@@ -134,66 +166,104 @@ router.get(ROUTES.GAME.RATING, async (req: Request, res: Response) => {
 /** ----------------------------------------
  * 게임 상세 조회
  ---------------------------------------- */
-router.get(ROUTES.GAME.DETAIL, async (req: Request<{ id: string }, any, any, DetailQuery>, res: Response) => {
-  const gameId = Number(req.params.id);
-  const userId = req.user?.id ?? (req.query.user_id ? Number(req.query.user_id) : null);
+router.get(
+  ROUTES.GAME.DETAIL,
+  async (
+    req: AuthenticatedRequest<{ id: string }, any, any, DetailQuery>,
+    res: Response
+  ) => {
+    // 게임 ID
+    const gameId = Number(req.params.id);
+    // 로그인한 사용자 ID 또는 쿼리로 넘어온 user_id
+    const userId =
+      req.user?.id ?? (req.query.user_id ? Number(req.query.user_id) : null);
 
-  if (isNaN(gameId)) return res.status(400).json({ message: MESSAGES.INVALID_GAME_ID });
-  if (userId !== null && isNaN(userId)) return res.status(400).json({ message: MESSAGES.INVALID_USER_ID });
+    // ID 유효성 체크
+    if (isNaN(gameId))
+      return res.status(400).json({ message: MESSAGES.INVALID_GAME_ID });
+    if (userId !== null && isNaN(userId))
+      return res.status(400).json({ message: MESSAGES.INVALID_USER_ID });
 
-  try {
-    const [gameRows] = await pool.execute<RowDataPacket[]>("SELECT * FROM games WHERE id = ?", [gameId]);
-    const game = gameRows[0];
-    if (!game) return res.status(404).json({ message: MESSAGES.GAME_NOT_FOUND });
+    try {
+      // 게임 조회
+      const [gameRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT * FROM games WHERE id = ?",
+        [gameId]
+      );
+      const game = gameRows[0];
+      if (!game)
+        return res.status(404).json({ message: MESSAGES.GAME_NOT_FOUND });
 
-    let isLiked = false;
-    let myRating = null;
+      let isLiked = false;
+      let myRating = null;
 
-    if (userId !== null) {
-      const [likeRows] = await pool.execute<RowDataPacket[]>("SELECT * FROM likes WHERE user_id = ? AND game_id = ?", [userId, gameId]);
-      isLiked = likeRows.length > 0;
+      // 로그인 사용자 또는 user_id가 존재하면 찜/별점 조회
+      if (userId !== null) {
+        const [likeRows] = await pool.execute<RowDataPacket[]>(
+          "SELECT * FROM likes WHERE user_id = ? AND game_id = ?",
+          [userId, gameId]
+        );
+        isLiked = likeRows.length > 0;
 
-      const [myRatingRows] = await pool.execute<RowDataPacket[]>("SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?", [userId, gameId]);
-      myRating = myRatingRows[0]?.rating ?? null;
+        const [myRatingRows] = await pool.execute<RowDataPacket[]>(
+          "SELECT rating FROM ratings WHERE user_id = ? AND game_id = ?",
+          [userId, gameId]
+        );
+        myRating = myRatingRows[0]?.rating ?? null;
+      }
+
+      // 찜 수 조회
+      const [likeCountRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT COUNT(*) AS likeCount FROM likes WHERE game_id = ?",
+        [gameId]
+      );
+      const likeCount: number = likeCountRows[0]?.likeCount ?? 0;
+
+      // 평균 별점 조회
+      const [avgRatingRows] = await pool.execute<RowDataPacket[]>(
+        "SELECT AVG(rating) as average FROM ratings WHERE game_id = ?",
+        [gameId]
+      );
+      const averageRating: number = Number(avgRatingRows[0]?.average ?? 0);
+
+      // 결과 반환
+      res.json({
+        game,
+        liked: isLiked,
+        likeCount,
+        myRating,
+        averageRating,
+      });
+    } catch (err) {
+      console.error("❌ 게임 상세 정보 조회 에러:", err);
+      res.status(500).json({ message: MESSAGES.SERVER_ERROR });
     }
-
-    const [likeCountRows] = await pool.execute<RowDataPacket[]>("SELECT COUNT(*) AS likeCount FROM likes WHERE game_id = ?", [gameId]);
-    const likeCount: number = likeCountRows[0]?.likeCount ?? 0;
-
-    const [avgRatingRows] = await pool.execute<RowDataPacket[]>("SELECT AVG(rating) as average FROM ratings WHERE game_id = ?", [gameId]);
-    const averageRating: number = Number(avgRatingRows[0]?.average ?? 0);
-
-    res.json({
-      game,
-      liked: isLiked,
-      likeCount,
-      myRating,
-      averageRating,
-    });
-  } catch (err) {
-    console.error("❌ 게임 상세 정보 조회 에러:", err);
-    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
   }
-});
+);
 
 /** ----------------------------------------
  * 찜한 게임 목록
  ---------------------------------------- */
-router.get(ROUTES.GAME.LIKED_LIST, authenticateToken, async (req: Request, res: Response) => {
-  const userId = req.user.id;
+router.get(
+  ROUTES.GAME.LIKED_LIST,
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest; // 타입 단언
+    const userId = authReq.user.id;
 
-  try {
-    const [games] = await pool.execute<RowDataPacket[]>(
-      `SELECT g.* FROM likes l JOIN games g ON l.game_id = g.id WHERE l.user_id = ? ORDER BY l.created_at DESC`,
-      [userId]
-    );
+    try {
+      const [games] = await pool.execute<RowDataPacket[]>(
+        `SELECT g.* FROM likes l JOIN games g ON l.game_id = g.id WHERE l.user_id = ? ORDER BY l.created_at DESC`,
+        [userId]
+      );
 
-    res.json(games as Game[]);
-  } catch (err) {
-    console.error("❌ 찜한 게임 목록 조회 오류:", err);
-    res.status(500).json({ message: MESSAGES.SERVER_ERROR });
+      res.json(games as Game[]);
+    } catch (err) {
+      console.error("❌ 찜한 게임 목록 조회 오류:", err);
+      res.status(500).json({ message: MESSAGES.SERVER_ERROR });
+    }
   }
-});
+);
 
 /** ----------------------------------------
  * 카테고리 게임 조회
@@ -203,10 +273,17 @@ router.get(ROUTES.GAME.CATEGORY, async (req: Request, res: Response) => {
   let column: string;
 
   switch (type) {
-    case "platform": column = "game_platforms"; break;
-    case "mode": column = "game_modes"; break;
-    case "tag": column = "game_tags"; break;
-    default: return res.status(400).json({ message: MESSAGES.CATEGORY_NOT_FOUND });
+    case "platform":
+      column = "game_platforms";
+      break;
+    case "mode":
+      column = "game_modes";
+      break;
+    case "tag":
+      column = "game_tags";
+      break;
+    default:
+      return res.status(400).json({ message: MESSAGES.CATEGORY_NOT_FOUND });
   }
 
   try {
