@@ -21,7 +21,13 @@ const allowedOrigins: string[] = [
 ];
 
 // ✅ Socket.IO 서버 생성
-const io = new Server(httpServer); // cors 옵션 제거
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
 
 
 // ✅ Socket 이벤트 설정
