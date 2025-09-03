@@ -16,15 +16,24 @@ const app = express();
 // 허용할 프론트엔드 도메인
 const allowedOrigins = [process.env.CLIENT_URL || "https://game-nest-gilt.vercel.app"];
 
+// ✅ CORS 설정
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // Postman, curl 허용
+    if (!origin) return callback(null, true); // curl, Postman 허용
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error("Not allowed by CORS"));
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
 
+// ✅ 모든 OPTIONS 요청에 대해 CORS 응답
+app.options("*", cors({
+  origin: allowedOrigins,
+  credentials: true,
+}));
+
+// JSON 파싱
 app.use(express.json());
 
 // 라우터 등록
@@ -38,6 +47,7 @@ app.use("/myScrap", myScrap);
 app.use("/steam", News);
 app.use("/chat", Chat);
 
+// 테스트
 app.get("/", (req, res) => res.send("✅ 서버 작동 중"));
 
 export default app;
