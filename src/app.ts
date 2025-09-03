@@ -47,7 +47,4 @@ app.use("/myScrap", myScrap);
 app.use("/steam", News);
 app.use("/chat", Chat);
 
-// 테스트
-app.get("/", (req, res) => res.send("✅ 서버 작동 중"));
-
 export default app;
