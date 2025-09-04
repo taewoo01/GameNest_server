@@ -269,28 +269,58 @@ router.get(
  ---------------------------------------- */
 router.get(ROUTES.GAME.CATEGORY, async (req: Request, res: Response) => {
   const { type, value } = req.params;
-  let column: string;
+  let query = "";
+  let params: any[] = [];
 
   switch (type) {
     case "platform":
-      column = "game_platforms";
+      query = `
+        SELECT id, game_title, game_thumbnail 
+        FROM games 
+        WHERE (
+          JSON_VALID(game_platforms) AND JSON_CONTAINS(game_platforms, JSON_QUOTE(?))
+        ) OR game_platforms = ?
+      `;
+      params = [value, value];
       break;
+
     case "mode":
-      column = "game_modes";
+      query = `
+        SELECT id, game_title, game_thumbnail 
+        FROM games 
+        WHERE (
+          JSON_VALID(game_modes) AND JSON_CONTAINS(game_modes, JSON_QUOTE(?))
+        ) OR game_modes = ?
+      `;
+      params = [value, value];
       break;
+
     case "tag":
-      column = "game_tags";
+      query = `
+        SELECT id, game_title, game_thumbnail 
+        FROM games 
+        WHERE (
+          JSON_VALID(game_tags) AND JSON_CONTAINS(game_tags, JSON_QUOTE(?))
+        ) OR game_tags = ?
+      `;
+      params = [value, value];
       break;
+
+    case "developer":
+      query = `
+        SELECT id, game_title, game_thumbnail 
+        FROM games 
+        WHERE game_developer = ?
+      `;
+      params = [value];
+      break;
+
     default:
       return res.status(400).json({ message: MESSAGES.CATEGORY_NOT_FOUND });
   }
 
   try {
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT id, game_title, game_thumbnail FROM games WHERE JSON_CONTAINS(${column}, JSON_ARRAY(?))`,
-      [value]
-    );
-
+    const [rows] = await pool.execute<RowDataPacket[]>(query, params);
     res.json(rows);
   } catch (err) {
     console.error("카테고리 게임 조회 에러:", err);
