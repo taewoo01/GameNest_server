@@ -16,7 +16,7 @@ const app = express();
 // 허용할 프론트 도메인
 const allowedOrigins = [
   "https://game-nest-gilt.vercel.app",
-  "http://localhost:3000"
+  "http://localhost:3000",
   "http://127.0.0.1:3000"
 ];
 
