@@ -1,6 +1,7 @@
 // src/app.ts
 import express from "express";
 import cors from "cors";
+import { allowedOrigins } from "./config/cors";
 import authRoutes from "./routes/auth.route";
 import gamesRoutes from "./routes/game.route";
 import communityRoutes from "./routes/community.route";
@@ -12,13 +13,6 @@ import News from "./routes/new.route";
 import Chat from "./routes/chat.route";
 
 const app = express();
-
-// 허용할 프론트 도메인
-const allowedOrigins = [
-  "https://game-nest-gilt.vercel.app",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000"
-];
 
 app.use(cors({
   origin: (origin, callback) => {

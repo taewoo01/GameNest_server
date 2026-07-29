@@ -65,7 +65,7 @@ router.post(ROUTES.AUTH.LOGIN, async (req: Request, res: Response) => {
       return res.status(401).json({ message: MESSAGES.WRONG_PASSWORD });
 
     const token = jwt.sign(
-      { id: user.id, user_id: user.user_login_id },
+      { id: user.id, user_id: user.user_login_id, email: user.user_email },
       process.env.JWT_SECRET as string,
       { expiresIn: "1h" }
     );

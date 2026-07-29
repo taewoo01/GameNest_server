@@ -13,7 +13,7 @@
 
 GameNest_server는 게임 목록/상세 정보 조회, 찜·별점, 커뮤니티 게시판(글쓰기·좋아요·스크랩·댓글), Steam 뉴스 크롤링, 실시간 오픈채팅 기능을 REST API와 Socket.IO로 제공하는 백엔드 서버입니다.
 
-프론트엔드는 별도 저장소(Vercel 배포, `https://game-nest-gilt.vercel.app`)에서 이 서버로 API/소켓 요청을 보내는 구조이며, `src/index.ts`·`src/app.ts`의 CORS 허용 목록과 `.env`의 `CLIENT_URL` 값으로 그 연동 관계를 확인할 수 있습니다. (git log 기준 첫 커밋: 2025-08-22)
+프론트엔드는 별도 저장소(Vercel 배포, `https://game-nest-gilt.vercel.app`)에서 이 서버로 API/소켓 요청을 보내는 구조이며, `src/config/cors.ts`의 CORS 허용 목록과 `.env`의 `CLIENT_URL` 값으로 그 연동 관계를 확인할 수 있습니다. (git log 기준 첫 커밋: 2025-08-22)
 
 ## 주요 기능
 
@@ -56,7 +56,6 @@ GameNest_server는 게임 목록/상세 정보 조회, 찜·별점, 커뮤니티
 - **데이터베이스**: MySQL (`mysql2/promise` 커넥션 풀, `src/db/pool.ts`)
 - **인증**: JSON Web Token (`jsonwebtoken`), 비밀번호 해시(`bcrypt`)
 - **외부 연동**: `rss-parser`(Steam 뉴스 RSS), `axios`
-- **코드에서 import되지 않는(미사용) 의존성**: `pg`, `libretranslate`, `@vitalets/google-translate-api` — 실제 DB 접근은 `mysql2`만 사용됩니다.
 
 ## 프로젝트 구조
 
@@ -68,13 +67,11 @@ GameNest_server/
 │   ├── socket.ts                 # Socket.IO 인증 미들웨어 + 채팅 이벤트 핸들러
 │   ├── AuthenticatedRequest.ts   # 인증된 요청(req.user)을 위한 타입 확장
 │   ├── config/
-│   │   └── route.ts              # ⚠ 빈 파일 (미사용)
+│   │   └── cors.ts               # Express/Socket.IO가 공유하는 CORS 허용 origin 목록
 │   ├── constants/
 │   │   ├── index.ts              # HASHED_NUMBER (bcrypt salt rounds)
 │   │   ├── messages.ts           # 응답 메시지 문자열 모음
 │   │   └── routes.ts             # 라우트 경로 상수 (ROUTES)
-│   ├── controllers/
-│   │   └── auth.controller.ts    # ⚠ 빈 파일 (미사용 — 실제 로직은 routes/auth.route.ts에 구현됨)
 │   ├── db/
 │   │   └── pool.ts               # mysql2 커넥션 풀 생성
 │   ├── middlewares/
@@ -93,8 +90,10 @@ GameNest_server/
 │       ├── auth.types.ts         # User, DetailQuery 타입
 │       ├── game.types.ts         # Game 타입
 │       └── index.d.ts            # Express Request.user 전역 타입 확장
-├── dist/                         # tsc 빌드 산출물 — ⚠ git에 커밋되어 있음 (참고 섹션 확인)
-├── .env                          # 환경변수 — ⚠ git에 커밋되어 있음 (참고 섹션 확인)
+├── dist/                         # tsc 빌드 산출물 (git 미추적, .gitignore 대상)
+├── .env                          # 환경변수 (git 미추적, .gitignore 대상)
+├── .env.example                  # 필요한 환경변수 키 목록 (실제 값 없음)
+├── .gitignore
 ├── package.json
 ├── package-lock.json
 └── tsconfig.json
@@ -131,16 +130,17 @@ GameNest_server/
 ### 요구 사항
 
 - Node.js
-- MySQL 서버 (기본 접속 정보는 `.env` 참고)
-- `.env` 파일: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `PORT`, `JWT_SECRET`, `CLIENT_URL`
+- MySQL 서버
+- `.env` 파일 (`.env.example`을 복사해서 실제 값을 채우면 됨): `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`, `PORT`, `JWT_SECRET`, `CLIENT_URL`
 
 ### 설치 및 실행
 
 ```bash
 npm install
+cp .env.example .env   # 값 채우기
 
-# 개발 모드 (아래 "참고" 섹션의 스크립트 이슈 확인)
-npx ts-node src/index.ts
+# 개발 모드
+npm run dev
 
 # 빌드
 npm run build
@@ -151,16 +151,17 @@ npm start
 
 | 명령어 | 설명 |
 |---|---|
-| `npm run dev` | `ts-node index.ts` 실행 — ⚠ 참고 섹션 확인 (실제로는 실패함) |
+| `npm run dev` | `ts-node src/index.ts`로 개발 서버 실행 |
 | `npm run build` | TypeScript 컴파일 (`src/` → `dist/`) |
 | `npm start` | 빌드된 `dist/index.js` 실행 (프로덕션) |
 
 ## 참고
 
-- **`.env`가 git에 커밋되어 있습니다.** `DB_PASS`, `JWT_SECRET` 등 민감 정보가 저장소에 그대로 노출되어 있고 `.gitignore` 파일도 없습니다. 실제 운영 전 시크릿 교체와 `.gitignore` 추가가 필요합니다.
-- **`dist/` 빌드 산출물도 git에 커밋되어 있습니다.** 소스와 별도로 관리되고 있어 최신 소스와 불일치할 수 있습니다.
-- **`npm run dev` 스크립트 경로 오류**: `package.json`의 `dev` 스크립트가 `ts-node index.ts`로 되어 있지만 실제 엔트리 파일은 `src/index.ts`입니다. 저장소 루트에는 `index.ts`가 없어 스크립트를 그대로 실행하면 파일을 찾지 못해 실패합니다. `ts-node src/index.ts`로 실행해야 합니다.
-- **빈(미사용) 파일**: `src/controllers/auth.controller.ts`, `src/config/route.ts`는 내용이 비어 있습니다. 인증 관련 실제 로직은 `src/routes/auth.route.ts`에 라우터와 함께 구현되어 있습니다.
-- **CORS 설정이 두 곳에 중복 정의**되어 있습니다. `src/app.ts`와 `src/index.ts` 양쪽에서 각각 `cors()` 미들웨어를 적용하며, 허용 origin 목록도 서로 다릅니다(`app.ts`는 하드코딩 + `127.0.0.1:3000` 포함, `index.ts`는 `CLIENT_URL` 환경변수 사용).
-- **JWT payload와 미들웨어 불일치**: 로그인 시 발급되는 토큰에는 `{ id, user_id }`만 서명되어 `email`이 포함되지 않지만, `authenticateToken`은 `decoded.email`을 읽어 `req.user.email`에 저장합니다. 따라서 `req.user.email`은 항상 `undefined`입니다(코드베이스에서 이 값을 실제로 사용하는 곳은 없습니다).
-- 의존성에 포함된 `pg`, `libretranslate`, `@vitalets/google-translate-api`는 `src/` 코드 어디에서도 사용되지 않습니다.
+- **`.env`가 과거 커밋에 남아 있습니다.** `.gitignore` 추가와 `git rm --cached`로 현재 시점부터는 추적을 중단했고, 대신 실제 값이 없는 `.env.example`을 추가했습니다. 다만 과거 커밋 히스토리에는 이전에 커밋됐던 `DB_PASS`, `JWT_SECRET` 값이 여전히 남아 있으므로, 해당 값들을 실제 운영 환경(DB, Render 등)에서 새 값으로 교체하는 것을 권장합니다. 히스토리에서 완전히 지우려면 별도로 `git filter-repo`/BFG 등을 이용한 히스토리 재작성과 force-push가 필요합니다(파괴적 작업이라 별도 확인 후 진행 필요).
+- **`node_modules/`도 과거에는 git에 커밋되어 있었습니다.** `.gitignore`가 없었던 탓에 함께 커밋된 것으로 보이며, 이번에 `.gitignore` 추가와 함께 추적을 중단했습니다.
+- **`dist/` 빌드 산출물도 더 이상 git에 커밋되지 않습니다.** `.gitignore`에 추가했으며, 배포 시에는 `npm run build`로 새로 생성해서 사용합니다.
+- **`npm run dev` 스크립트 경로 오류를 수정했습니다.** 기존 `ts-node index.ts` → `ts-node src/index.ts`로 변경되어 정상 동작합니다.
+- **빈(미사용) 파일을 제거했습니다.** `src/controllers/auth.controller.ts`, `src/config/route.ts`는 내용이 비어 있어 삭제했습니다(인증 로직은 원래부터 `src/routes/auth.route.ts`에 구현돼 있었습니다). 대신 `src/config/`에는 공유 CORS 설정(`cors.ts`)이 들어갑니다.
+- **CORS 설정을 `src/config/cors.ts`로 통합했습니다.** 기존에는 `src/app.ts`와 `src/index.ts`에 각각 다른 allowedOrigins 배열이 중복 정의돼 있었는데, 이제 하나의 배열을 Express(`app.ts`)와 Socket.IO(`index.ts`) 양쪽에서 공유합니다.
+- **JWT payload에 `email`을 포함하도록 수정했습니다.** 기존에는 로그인 토큰이 `{ id, user_id }`만 서명해 `authenticateToken`이 채워주는 `req.user.email`이 항상 `undefined`였는데, 이제 `{ id, user_id, email }`을 서명합니다.
+- **미사용 의존성을 제거했습니다.** `pg`, `libretranslate`, `@vitalets/google-translate-api`(및 `@types/pg`)는 `src/` 코드 어디에서도 사용되지 않아 `package.json`에서 삭제했습니다.
